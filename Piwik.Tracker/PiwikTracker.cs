@@ -16,6 +16,7 @@ namespace Piwik.Tracker
     using System.Collections.Generic;
     using System.Linq;
     using System.Net;
+    using System.Net.Http;
     using System.Globalization;
     using System.Web;
     using System.Text.RegularExpressions;
@@ -188,6 +189,8 @@ namespace Piwik.Tracker
         private long? _lastEcommerceOrderTs;
         private bool _sendImageResponse = true;
         private static HttpContextAccessor _httpContextAccessor = new HttpContextAccessor();
+        private static readonly HttpClient SharedHttpClient = new HttpClient();
+        private readonly HttpClient _httpClient;
 
         /// <summary>
         /// Builds a PiwikTracker object, used to track visits, pages and Goal conversions
@@ -206,6 +209,37 @@ namespace Piwik.Tracker
             }
             PiwikBaseUrl = FixPiwikBaseUrl(apiUrl);
             IdSite = idSite;
+
+            _referrerUrl = _httpContextAccessor.HttpContext?.Request?.Headers["Referer"][0] ?? string.Empty;
+            _ip = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty;
+            _acceptLanguage = _httpContextAccessor.HttpContext?.Request?.Headers["Accept-Language"] ?? string.Empty;
+            _userAgent = _httpContextAccessor.HttpContext?.Request?.Headers["User-Agent"].ToString() ?? string.Empty;
+
+            _pageUrl = GetCurrentUrl();
+            SetNewVisitorId();
+            _createTs = _currentTs;
+            _visitorCustomVar = GetCustomVariablesFromCookie();
+        }
+
+        /// <summary>
+        /// Builds a PiwikTracker object, used to track visits, pages and Goal conversions
+        /// for a specific website, by using the Piwik Tracking API.
+        /// If the tracker is used within a web page or web controller, the following information are pre-initialised :
+        /// URL Referrer, current page URL, remote IP, Accept-Language HTTP header and User-Agent HTTP header.
+        /// </summary>
+        /// <param name="idSite">Id site to be tracked</param>
+        /// <param name="apiUrl">"http://example.org/piwik/" or "http://piwik.example.org/". If set, will overwrite PiwikTracker.URL</param>
+        /// <param name="httpClient">An instance of HttpClient to be used for requests</param>
+        /// <exception cref="ArgumentException">apiUrl must not be null or empty</exception>
+        public PiwikTracker(int idSite, string apiUrl, HttpClient httpClient)
+        {
+            if (string.IsNullOrEmpty(apiUrl))
+            {
+                throw new ArgumentException("Piwik api url must not be emty or null.", nameof(apiUrl));
+            }
+            PiwikBaseUrl = FixPiwikBaseUrl(apiUrl);
+            IdSite = idSite;
+            _httpClient = httpClient;
 
             _referrerUrl = _httpContextAccessor.HttpContext?.Request?.Headers["Referer"][0] ?? string.Empty;
             _ip = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty;
@@ -1441,28 +1475,38 @@ namespace Piwik.Tracker
                 return null;
             }
 
-            var request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = method;
-            request.UserAgent = _userAgent;
-            request.Headers.Add("Accept-Language", _acceptLanguage);
-            request.Timeout = (int)RequestTimeout.TotalMilliseconds;
-            if (Proxy != null)
+            HttpClient client;
+            if (_httpClient != null)
             {
-                request.Proxy = Proxy;
+                client = _httpClient;
+                client.Timeout = RequestTimeout;
+            }
+            else
+            {
+                var handler = new HttpClientHandler();
+                if (Proxy != null)
+                {
+                    handler.Proxy = Proxy;
+                    handler.UseProxy = true;
+                }
+                client = new HttpClient(handler) { Timeout = RequestTimeout };
             }
 
+            var request = new HttpRequestMessage(
+                method == "POST" ? HttpMethod.Post : HttpMethod.Get,
+                url
+            );
+            if (!string.IsNullOrEmpty(_userAgent))
+                request.Headers.UserAgent.ParseAdd(_userAgent);
+            if (!string.IsNullOrEmpty(_acceptLanguage))
+                request.Headers.AcceptLanguage.ParseAdd(_acceptLanguage);
             if (!string.IsNullOrEmpty(data))
             {
-                request.ContentType = "application/json";
-                using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-                {
-                    streamWriter.Write(data);
-                }
+                request.Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json");
             }
-            using (var result = (HttpWebResponse)request.GetResponse())
-            {
-                return new TrackingResponse { HttpStatusCode = result.StatusCode, RequestedUrl = url };
-            }
+
+            var response = client.SendAsync(request).GetAwaiter().GetResult();
+            return new TrackingResponse { HttpStatusCode = response.StatusCode, RequestedUrl = url };
         }
 
         /// <summary>
