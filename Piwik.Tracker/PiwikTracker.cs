@@ -1136,7 +1136,7 @@ namespace Piwik.Tracker
         public string GetUrlTrackAction(string actionUrl, ActionType actionType)
         {
             var url = GetRequest(IdSite);
-            url += "&" + actionType + "=" + UrlEncode(actionUrl);
+            url += "&" + actionType.ToString().ToLower() + "=" + UrlEncode(actionUrl);
             return url;
         }
 
