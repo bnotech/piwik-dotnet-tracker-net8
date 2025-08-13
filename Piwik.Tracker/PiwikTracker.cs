@@ -188,7 +188,7 @@ namespace Piwik.Tracker
         private long? _lastVisitTs;
         private long? _lastEcommerceOrderTs;
         private bool _sendImageResponse = true;
-        private static HttpContextAccessor _httpContextAccessor = new HttpContextAccessor();
+        private static IHttpContextAccessor _httpContextAccessor = new HttpContextAccessor();
         private static readonly HttpClient SharedHttpClient = new HttpClient();
         private readonly HttpClient _httpClient;
 
@@ -201,7 +201,7 @@ namespace Piwik.Tracker
         /// <param name="idSite">Id site to be tracked</param>
         /// <param name="apiUrl">"http://example.org/piwik/" or "http://piwik.example.org/". If set, will overwrite PiwikTracker.URL</param>
         /// <exception cref="ArgumentException">apiUrl must not be null or empty</exception>
-        public PiwikTracker(int idSite, string apiUrl)
+        public PiwikTracker(int idSite, string apiUrl, IHttpContextAccessor httpContextAccessor, string currentUrl)
         {
             if (string.IsNullOrEmpty(apiUrl))
             {
@@ -210,12 +210,13 @@ namespace Piwik.Tracker
             PiwikBaseUrl = FixPiwikBaseUrl(apiUrl);
             IdSite = idSite;
 
-            _referrerUrl = _httpContextAccessor.HttpContext?.Request?.Headers["Referer"][0] ?? string.Empty;
+            _httpContextAccessor = httpContextAccessor;
+            _referrerUrl = (bool)_httpContextAccessor.HttpContext?.Request?.Headers.ContainsKey("Referer") ? _httpContextAccessor.HttpContext?.Request?.Headers["Referer"][0] : string.Empty;
             _ip = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty;
             _acceptLanguage = _httpContextAccessor.HttpContext?.Request?.Headers["Accept-Language"] ?? string.Empty;
             _userAgent = _httpContextAccessor.HttpContext?.Request?.Headers["User-Agent"].ToString() ?? string.Empty;
 
-            _pageUrl = GetCurrentUrl();
+            _pageUrl = currentUrl;
             SetNewVisitorId();
             _createTs = _currentTs;
             _visitorCustomVar = GetCustomVariablesFromCookie();
@@ -623,7 +624,7 @@ namespace Piwik.Tracker
         public TrackingResponse DoTrackPageView(string documentTitle = null)
         {
             string url = GetUrlTrackPageView(documentTitle);
-            return SendRequest(url);
+            return SendRequest(url, "POST");
         }
 
         /// <summary>
@@ -704,7 +705,7 @@ namespace Piwik.Tracker
         {
             // Referrer could be udpated to be the current URL temporarily (to mimic JS behavior)
             string url = GetUrlTrackAction(actionUrl, actionType);
-            return SendRequest(url);
+            return SendRequest(url, "POST");
         }
 
         /// <summary>
@@ -1549,11 +1550,11 @@ namespace Piwik.Tracker
                     "&r=" + new Random().Next(0, 1000000).ToString("000000") +
 
                     // Only allowed for Super User, token_auth required,
-                    (!string.IsNullOrEmpty(_ip) ? "&cip=" + _ip : "") +
+                    /*(!string.IsNullOrEmpty(_ip) ? "&cip=" + _ip : "") +
                     (!string.IsNullOrEmpty(_userId) ? "&uid=" + UrlEncode(_userId) : "") +
                     (!_forcedDatetime.Equals(DateTimeOffset.MinValue) ? "&cdt=" + FormatDateValue(_forcedDatetime) : "") +
                     (_forcedNewVisit ? "&new_visit=1" : "") +
-                    (!string.IsNullOrEmpty(_tokenAuth) && !_doBulkRequests ? "&token_auth=" + UrlEncode(_tokenAuth) : "") +
+                    (!string.IsNullOrEmpty(_tokenAuth) && !_doBulkRequests ? "&token_auth=" + UrlEncode(_tokenAuth) : "") +*/
 
                     // Values collected from cookie
                     "&_idts=" + _createTs +
