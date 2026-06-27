@@ -1550,11 +1550,11 @@ namespace Piwik.Tracker
                     "&r=" + new Random().Next(0, 1000000).ToString("000000") +
 
                     // Only allowed for Super User, token_auth required,
-                    /*(!string.IsNullOrEmpty(_ip) ? "&cip=" + _ip : "") +
+                    (!string.IsNullOrEmpty(_ip) ? "&cip=" + _ip : "") +
                     (!string.IsNullOrEmpty(_userId) ? "&uid=" + UrlEncode(_userId) : "") +
                     (!_forcedDatetime.Equals(DateTimeOffset.MinValue) ? "&cdt=" + FormatDateValue(_forcedDatetime) : "") +
                     (_forcedNewVisit ? "&new_visit=1" : "") +
-                    (!string.IsNullOrEmpty(_tokenAuth) && !_doBulkRequests ? "&token_auth=" + UrlEncode(_tokenAuth) : "") +*/
+                    (!string.IsNullOrEmpty(_tokenAuth) && !_doBulkRequests ? "&token_auth=" + UrlEncode(_tokenAuth) : "") +
 
                     // Values collected from cookie
                     "&_idts=" + _createTs +
