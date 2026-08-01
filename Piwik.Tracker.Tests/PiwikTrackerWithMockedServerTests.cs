@@ -20,9 +20,9 @@ namespace Piwik.Tracker.Tests
     [TestFixture]
     internal class PiwikTrackerWithMockedServerTests
     {
-        private PiwikTracker _sut;
-        private Mock<HttpMessageHandler> _mockHttpHandler;
-        private HttpClient _mockHttpClient;
+        private PiwikTracker _sut = null!;
+        private Mock<HttpMessageHandler> _mockHttpHandler = null!;
+        private HttpClient _mockHttpClient = null!;
         private const string UA = "Firefox";
         private const string PiwikBaseUrl = "http://127.0.0.1:1122/piwik.php";
         private const int SiteId = 1;
@@ -58,7 +58,7 @@ namespace Piwik.Tracker.Tests
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                    ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -70,11 +70,12 @@ namespace Piwik.Tracker.Tests
             var actual = _sut.DoTrackPageView(documentTitle);
 
             // Assert
-            Assert.That(actual.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(actual, Is.Not.Null);
+            Assert.That(actual!.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
             _mockHttpHandler.Protected().Verify(
                 "SendAsync",
                 Times.AtLeastOnce(),
-                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get),
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
                 ItExpr.IsAny<CancellationToken>());
         }
 
@@ -110,7 +111,8 @@ namespace Piwik.Tracker.Tests
             var actual = _sut.DoTrackEvent(category, action, name, value);
 
             // Assert
-            Assert.That(actual.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(actual, Is.Not.Null);
+            Assert.That(actual!.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
             _mockHttpHandler.Protected().Verify(
                 "SendAsync",
                 Times.AtLeastOnce(),
@@ -122,7 +124,7 @@ namespace Piwik.Tracker.Tests
         [TestCase("myCn", "mycp", "myct")]
         [TestCase("myCn", null, "myct")]
         [TestCase("myCn", "mycp", null)]
-        public void DoTrackContentImpression_Test(string contentName, string contentPiece, string contentTarget)
+        public void DoTrackContentImpression_Test(string contentName, string? contentPiece, string? contentTarget)
         {
             // Arrange
             var expectedUri = new Uri($"{PiwikBaseUrl}?idsite={SiteId}&rec=1&apiv=1&url=http://unknown&c_n={HttpUtility.UrlEncode(contentName)}&_idvc=0&_id={_sut.GetVisitorId()}");
@@ -150,7 +152,8 @@ namespace Piwik.Tracker.Tests
             var actual = _sut.DoTrackContentImpression(contentName, contentPiece, contentTarget);
 
             // Assert
-            Assert.That(actual.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(actual, Is.Not.Null);
+            Assert.That(actual!.HttpStatusCode, Is.EqualTo(HttpStatusCode.OK));
             _mockHttpHandler.Protected().Verify(
                 "SendAsync",
                 Times.AtLeastOnce(),

@@ -15,7 +15,7 @@ namespace Piwik.Tracker.Tests
         private const string UA = "Firefox";
         private const string PiwikBaseUrl = "http://piwik.local";
         private const int SiteId = 1;
-        private PiwikTracker _sut;
+        private PiwikTracker _sut = null!;
 
         [SetUp]
         public void SetUpTest()
@@ -42,7 +42,7 @@ namespace Piwik.Tracker.Tests
         [TestCase(Scopes.Event, 3, "myEventVar", "myEventVarValue")]
         [TestCase(Scopes.Visit, 4, null, null)]
         [TestCase(Scopes.Visit, 4, "myVisitVar", "myVisitVarValue")]
-        public void GetCustomVariable_WhenVariableIsSet_ReturnsCorrectVariable(Scopes variableScope, int variableId, string variableName, string variableValue)
+        public void GetCustomVariable_WhenVariableIsSet_ReturnsCorrectVariable(Scopes variableScope, int variableId, string? variableName, string? variableValue)
         {
             //Arrange
             _sut.SetCustomVariable(variableId, variableName, variableValue, variableScope);
@@ -50,7 +50,8 @@ namespace Piwik.Tracker.Tests
             //Act
             var actual = _sut.GetCustomVariable(variableId, variableScope);
             //Assert
-            Assert.That(actual.Name, Is.EqualTo(variableName));
+            Assert.That(actual, Is.Not.Null);
+            Assert.That(actual!.Name, Is.EqualTo(variableName));
             Assert.That(actual.Value, Is.EqualTo(variableValue));
         }
 
@@ -365,9 +366,9 @@ namespace Piwik.Tracker.Tests
         [TestCase("gh-.:/65%", "", "1,2,3", 0.570, 0UL)]
         [TestCase("gh-.:/65%", "myName", null, 0.70, 9223372036854775808UL)]
         [TestCase("gh-.:/65%", "myName", "1", 45763756d, 9223372036854775808UL)]
-        public void AddEcommerceItem_Test(string sku, string name, string categories, double price, ulong quantity)
+        public void AddEcommerceItem_Test(string sku, string name, string? categories, double price, ulong quantity)
         {
-            List<string> categoryList = null;
+            List<string>? categoryList = null;
             if (!string.IsNullOrEmpty(categories))
             {
                 categoryList = categories.Split(',').ToList();
@@ -376,9 +377,9 @@ namespace Piwik.Tracker.Tests
             Assert.That(actual, Does.Not.Contain("ec_items"));
             _sut.AddEcommerceItem(sku, name, categoryList, price, quantity);
             actual = _sut.GetUrlTrackEcommerce(0);
-            var expected = new Dictionary<string, object[]>
+            var expected = new Dictionary<string, object?[]>
             {
-                { "",new object[] {sku, name, categoryList, price.ToString("0.##", CultureInfo.InvariantCulture), quantity}}
+                { "",new object?[] {sku, name, categoryList, price.ToString("0.##", CultureInfo.InvariantCulture), quantity}}
             };
             var expectedAsJson = JsonConvert.SerializeObject(expected.Values);
             Console.WriteLine(expectedAsJson);
@@ -389,10 +390,10 @@ namespace Piwik.Tracker.Tests
         [TestCase("mySku", "myName", "1,2,3", 0.70)]
         [TestCase("mySku", "myName", null, 0.70)]
         [TestCase("mySku", "myName", "1,2,3", 22265460.70)]
-        public void SetEcommerceView_Test(string sku, string name, string categories, double price)
+        public void SetEcommerceView_Test(string sku, string name, string? categories, double price)
         {
             // Arrange
-            List<string> categoryList = null;
+            List<string>? categoryList = null;
             if (!string.IsNullOrEmpty(categories))
             {
                 categoryList = categories.Split(',').ToList();
@@ -404,11 +405,14 @@ namespace Piwik.Tracker.Tests
             Uri uri = new Uri(actualRequest);
             var actualRequestArguments =HttpUtility.ParseQueryString(uri.Query).ToKeyValuePairs().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             var actualVariablesById = JsonConvert.DeserializeObject<Dictionary<int, object>>(actualRequestArguments["cvar"]);
-            Assert.That(actualVariablesById.Count, Is.EqualTo(4));
+            Assert.That(actualVariablesById, Is.Not.Null);
+            Assert.That(actualVariablesById!.Count, Is.EqualTo(4));
             foreach (var variableById in actualVariablesById)
             {
                 Console.WriteLine(variableById.Key + "=" + variableById.Value);
-                var variableValue = JsonConvert.DeserializeObject<string[]>(variableById.Value.ToString());
+                var serializedValue = variableById.Value?.ToString()
+                    ?? throw new InvalidOperationException("Custom variable value must be serialized.");
+                var variableValue = JsonConvert.DeserializeObject<string[]>(serializedValue);
                 switch (variableById.Key)
                 {
                     case PiwikTracker.CvarIndexEcommerceItemPrice:

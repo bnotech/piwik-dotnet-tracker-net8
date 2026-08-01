@@ -16,7 +16,7 @@ namespace Piwik.Tracker
         /// <summary>
         /// Gets the Url used for last request. Used in tests to output useful error messages.
         /// </summary>
-        public string RequestedUrl { get; internal set; }
+        public string RequestedUrl { get; internal set; } = string.Empty;
 
         /// <inheritdoc />
         public override string ToString()

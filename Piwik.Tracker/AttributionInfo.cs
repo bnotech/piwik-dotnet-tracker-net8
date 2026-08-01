@@ -12,12 +12,12 @@ namespace Piwik.Tracker
         /// <summary>
         /// Gets or sets the name of the campaign.
         /// </summary>
-        public string CampaignName { get; set; }
+        public string CampaignName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the campaign keyword.
         /// </summary>
-        public string CampaignKeyword { get; set; }
+        public string CampaignKeyword { get; set; } = string.Empty;
 
         /// <summary>
         /// Timestamp at which the referrer was set
@@ -27,7 +27,7 @@ namespace Piwik.Tracker
         /// <summary>
         /// Gets or sets the referrer URL.
         /// </summary>
-        public string ReferrerUrl { get; set; }
+        public string ReferrerUrl { get; set; } = string.Empty;
 
         /// <summary>
         /// Coverts this instance to a string array.

@@ -14,7 +14,11 @@ namespace Piwik.Tracker.Tests
 
         public static IEnumerable<KeyValuePair<string, string>> ToKeyValuePairs(this NameValueCollection nameValueCollection)
         {
-            return nameValueCollection.AllKeys.Select(k => new KeyValuePair<string, string>(k, nameValueCollection[(string)k]));
+            return nameValueCollection.AllKeys
+                .Where(key => key is not null)
+                .Select(key => new KeyValuePair<string, string>(
+                    key!,
+                    nameValueCollection[key!] ?? string.Empty));
         }
     }
 }

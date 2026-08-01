@@ -11,7 +11,7 @@
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="value">The value.</param>
-        public CustomVar(string name, string value)
+        public CustomVar(string? name, string? value)
         {
             Name = name;
             Value = value;
@@ -20,12 +20,12 @@
         /// <summary>
         /// Gets the name.
         /// </summary>
-        public string Name { get; }
+        public string? Name { get; }
 
         /// <summary>
         /// Gets the value.
         /// </summary>
-        public string Value { get; }
+        public string? Value { get; }
 
         /// <inheritdoc />
         public override string ToString()
