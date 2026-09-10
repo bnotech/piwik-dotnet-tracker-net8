@@ -1498,9 +1498,24 @@ namespace Piwik.Tracker
                 client = new HttpClient(handler) { Timeout = RequestTimeout };
             }
 
+            var usePost = method == "POST" || (!string.IsNullOrWhiteSpace(_tokenAuth) && !force);
+            var requestUrl = url;
+            var contentType = "application/json";
+
+            if (usePost && string.IsNullOrEmpty(data))
+            {
+                var queryStart = url.IndexOf('?');
+                if (queryStart >= 0)
+                {
+                    requestUrl = url.Substring(0, queryStart);
+                    data = url.Substring(queryStart + 1);
+                    contentType = "application/x-www-form-urlencoded";
+                }
+            }
+
             var request = new HttpRequestMessage(
-                method == "POST" ? HttpMethod.Post : HttpMethod.Get,
-                url
+                usePost ? HttpMethod.Post : HttpMethod.Get,
+                requestUrl
             );
             if (!string.IsNullOrEmpty(_userAgent))
                 request.Headers.UserAgent.ParseAdd(_userAgent);
@@ -1508,11 +1523,11 @@ namespace Piwik.Tracker
                 request.Headers.AcceptLanguage.ParseAdd(_acceptLanguage);
             if (!string.IsNullOrEmpty(data))
             {
-                request.Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json");
+                request.Content = new StringContent(data, System.Text.Encoding.UTF8, contentType);
             }
 
             var response = client.SendAsync(request).GetAwaiter().GetResult();
-            return new TrackingResponse { HttpStatusCode = response.StatusCode, RequestedUrl = url };
+            return new TrackingResponse { HttpStatusCode = response.StatusCode, RequestedUrl = requestUrl };
         }
 
         /// <summary>
